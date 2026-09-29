@@ -480,6 +480,32 @@ impl ImageRenderer<Static> {
 }
 
 impl ImageRenderer<Tile> {
+    /// Render slippy tile `z/x/y` of a `tile_size` pixel grid (256 or 512).
+    ///
+    /// MapLibre zoom levels assume 512 px tiles, so a 256 px tile at `z` is drawn at map
+    /// zoom `z - 1`. Build the renderer with the same size (and the pixel ratio for `@2x`).
+    ///
+    /// # Errors
+    /// If no style has been loaded.
+    pub fn render_tile_sized(
+        &mut self,
+        zoom: u8,
+        x: u32,
+        y: u32,
+        tile_size: u32,
+    ) -> Result<Image, RenderingError> {
+        let center = tile_coords_to_latlng(f64::from(zoom), x, y);
+        let map_zoom = f64::from(zoom) - (512.0 / f64::from(tile_size)).log2();
+        self.submit_with_camera(
+            &CameraUpdate::new()
+                .center(center)
+                .zoom(map_zoom.max(0.0))
+                .bearing(0.0)
+                .pitch(0.0),
+        )?
+        .wait()
+    }
+
     /// Render a top-down tile of the map as a static [`Image`].
     ///
     /// # Errors
