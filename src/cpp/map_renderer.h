@@ -165,7 +165,7 @@ private:
 };
 
 #if defined(MLN_RENDER_BACKEND_VULKAN)
-extern "C" int32_t vkEnumerateInstanceVersion(uint32_t* pApiVersion);
+#include <dlfcn.h>
 #endif
 
 // Serializes bringing renderers up and tearing them down across threads, only where needed.
@@ -177,8 +177,21 @@ inline std::unique_lock<std::mutex> rendererLifecycleLock() {
 #if defined(MLN_RENDER_BACKEND_VULKAN)
     static std::mutex mutex;
     static const bool needed = [] {
+        // MapLibre loads the Vulkan loader at runtime, so ask it the same way.
+#if defined(__APPLE__)
+        void* loader = dlopen("libvulkan.1.dylib", RTLD_NOW | RTLD_LOCAL);
+#else
+        void* loader = dlopen("libvulkan.so.1", RTLD_NOW | RTLD_LOCAL);
+#endif
+        using EnumerateInstanceVersion = int32_t (*)(uint32_t*);
+        auto enumerate = loader ? reinterpret_cast<EnumerateInstanceVersion>(
+                                      dlsym(loader, "vkEnumerateInstanceVersion"))
+                                : nullptr;
         uint32_t version = 0;
-        const bool known = vkEnumerateInstanceVersion(&version) == 0;
+        const bool known = enumerate && enumerate(&version) == 0;
+        if (loader) {
+            dlclose(loader);
+        }
         const uint32_t fixed = (1u << 22) | (4u << 12) | 345u;
         const bool old = !known || version < fixed;
         if (old) {
