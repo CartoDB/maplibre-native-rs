@@ -28,6 +28,7 @@
 
 #include <cstdint>
 #include <cassert>
+#include <mutex>
 #include <memory>
 #include <optional>
 #include <vector>
@@ -161,6 +162,15 @@ private:
     std::optional<rust::Box<RenderRequestedCallback>> renderRequestedCallback;
 };
 
+// Serializes bringing renderers up and tearing them down across threads. Each renderer
+// creates and destroys its own graphics device, and the Vulkan loader before 1.4.350
+// unloads drivers without devices while doing so; another thread resolving device
+// functions at that moment crashes (KhronosGroup/Vulkan-Loader#1866).
+inline std::mutex& rendererLifecycleMutex() {
+    static std::mutex mutex;
+    return mutex;
+}
+
 class MapRenderer {
 public:
     explicit MapRenderer(mln::MapMode mapMode,
@@ -168,6 +178,7 @@ public:
                          float pixelRatio,
                          const mln::ResourceOptions& resourceOptions)
         : mapObserverInstance(std::make_shared<MapObserver>()) {
+        std::scoped_lock lifecycle(rendererLifecycleMutex());
         bindThreadRunLoop();
         // Continuous renderers are host-driven.
         bool invalidateOnUpdate = mapMode != mln::MapMode::Continuous;
@@ -181,6 +192,13 @@ public:
         mln::Log::setObserver(std::move(logObserver));
         databaseFileSource = resource_options::applyMaximumAmbientCacheSize(resourceOptions);
         map = std::make_unique<mln::Map>(*frontend, *mapObserverInstance, mapOptions, resourceOptions);
+    }
+
+    ~MapRenderer() {
+        std::scoped_lock lifecycle(rendererLifecycleMutex());
+        map.reset();
+        databaseFileSource.reset();
+        frontend.reset();
     }
 
     std::shared_ptr<MapObserver> observer() {
