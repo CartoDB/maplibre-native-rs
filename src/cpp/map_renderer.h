@@ -170,7 +170,7 @@ extern "C" int32_t vkEnumerateInstanceVersion(uint32_t* pApiVersion);
 
 // Serializes bringing renderers up and tearing them down across threads, only where needed.
 // Each renderer creates and destroys its own graphics device, and the Vulkan loader before
-// 1.4.350 unloads drivers without devices while doing so; another thread resolving device
+// 1.4.345 unloads drivers without devices while doing so; another thread resolving device
 // functions at that moment crashes (KhronosGroup/Vulkan-Loader#1866). Newer loaders and other
 // backends take no lock.
 inline std::unique_lock<std::mutex> rendererLifecycleLock() {
@@ -179,13 +179,13 @@ inline std::unique_lock<std::mutex> rendererLifecycleLock() {
     static const bool needed = [] {
         uint32_t version = 0;
         const bool known = vkEnumerateInstanceVersion(&version) == 0;
-        const uint32_t fixed = (1u << 22) | (4u << 12) | 350u;
+        const uint32_t fixed = (1u << 22) | (4u << 12) | 345u;
         const bool old = !known || version < fixed;
         if (old) {
             mln::Log::Warning(mln::Event::General,
                               "Vulkan loader " + std::to_string((version >> 22) & 0x7F) + "." +
                                   std::to_string((version >> 12) & 0x3FF) + "." + std::to_string(version & 0xFFF) +
-                                  " is older than 1.4.350: creating and dropping renderers one at a time");
+                                  " is older than 1.4.345: creating and dropping renderers one at a time");
         }
         return old;
     }();
