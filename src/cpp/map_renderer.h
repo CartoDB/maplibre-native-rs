@@ -167,14 +167,13 @@ private:
 #include <dlfcn.h>
 #endif
 
-// Serializes bringing renderers up and tearing them down across threads.
-// Each renderer creates and destroys its own Vulkan instance and device, and the Vulkan loader
-// before 1.4.345 races when that happens on several threads at once.
-// TODO: Remove this mutex once supported distributions ship a Vulkan loader with
+// Vulkan loaders before 1.4.345 crash when renderers are created or dropped
+// on several threads at once (#294).
+// TODO: Remove once supported distributions ship a loader with
 // https://github.com/KhronosGroup/Vulkan-Loader/pull/1866
 #if defined(MLN_RENDER_BACKEND_VULKAN)
 inline bool vulkanLoaderNeedsLifecycleLock() {
-    // MapLibre loads the Vulkan loader at runtime, so ask it the same way.
+    // MapLibre also opens the loader at runtime.
 #if defined(__APPLE__)
     void* loader = dlopen("libvulkan.1.dylib", RTLD_NOW | RTLD_LOCAL);
 #else
@@ -191,7 +190,7 @@ inline bool vulkanLoaderNeedsLifecycleLock() {
     if (!known) {
         return true;
     }
-    // Same fields as VK_API_VERSION_MAJOR/MINOR/PATCH; the top 3 bits are the variant.
+    // As VK_API_VERSION_MAJOR/MINOR/PATCH.
     const uint32_t major = (version >> 22) & 0x7F;
     const uint32_t minor = (version >> 12) & 0x3FF;
     const uint32_t patch = version & 0xFFF;

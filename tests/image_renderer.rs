@@ -156,7 +156,7 @@ fn style_load_request_polls_to_completion() {
 
 #[test]
 fn renderers_created_and_dropped_on_many_threads() {
-    // Older Vulkan loaders crash when several threads create or drop renderers at once.
+    // Regression test for #294.
     let handles: Vec<_> = (0..8)
         .map(|_| {
             thread::spawn(|| {
