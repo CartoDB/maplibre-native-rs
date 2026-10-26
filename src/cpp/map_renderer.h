@@ -4,6 +4,7 @@
 #include <mln/gfx/backend_scope.hpp>
 #include <mln/gfx/headless_frontend.hpp>
 #include <mln/gfx/renderer_backend.hpp>
+#include <mln/renderer/renderer.hpp>
 #include <mln/style/image.hpp>
 #include <mln/style/layer.hpp>
 #include <mln/map/map.hpp>
@@ -311,6 +312,10 @@ public:
 
     void setDebugFlags(mln::MapDebugOptions debugFlags) {
         map->setDebug(debugFlags);
+    }
+
+    void setTileCacheSize(size_t tiles) {
+        frontend->getRenderer()->setTileCacheSize(tiles);
     }
 
     void jumpTo(const FfiCameraOptions& cameraOptions);

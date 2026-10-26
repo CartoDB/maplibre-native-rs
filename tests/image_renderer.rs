@@ -220,6 +220,30 @@ fn tile_renderer_honours_tile_size(#[case] pixel_ratio: f32, #[case] expected: u
     assert_eq!(image.dimensions(), (expected, expected));
 }
 
+#[rstest]
+#[case::none(0)]
+#[case::two(2)]
+fn tile_cache_size_keeps_the_rendered_tiles(#[case] tiles: usize) {
+    let mut default = tile_renderer_with_size(256, 1.0);
+    let mut sized = ImageRendererBuilder::new()
+        .with_size(NonZeroU32::new(256).unwrap(), NonZeroU32::new(256).unwrap())
+        .with_pixel_ratio(1.0)
+        .with_tile_cache_size(tiles)
+        .build_tile_renderer();
+    for renderer in [&mut default, &mut sized] {
+        renderer
+            .load_style_from_path(fixture_path("test-style-polygon.json"))
+            .expect("test style path should be valid");
+    }
+
+    for (z, x, y) in [(2, 1, 1), (2, 2, 1), (2, 1, 1)] {
+        assert_eq!(
+            render_tile_image(&mut default, z, x, y),
+            render_tile_image(&mut sized, z, x, y)
+        );
+    }
+}
+
 #[test]
 fn small_tile_matches_quadrant_of_parent_512_tile() {
     let mut small = tile_renderer_with_size(256, 1.0);
