@@ -223,7 +223,7 @@ fn tile_renderer_honours_tile_size(#[case] pixel_ratio: f32, #[case] expected: u
 #[rstest]
 #[case::none(0)]
 #[case::two(2)]
-fn tile_cache_size_keeps_the_rendered_tiles(#[case] tiles: usize) {
+fn tile_cache_size_does_not_change_the_image(#[case] tiles: usize) {
     let mut default = tile_renderer_with_size(256, 1.0);
     let mut sized = ImageRendererBuilder::new()
         .with_size(NonZeroU32::new(256).unwrap(), NonZeroU32::new(256).unwrap())
