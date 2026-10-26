@@ -36,6 +36,7 @@ pub struct ImageRendererBuilder {
     /// Pixel ratio for high-DPI displays
     pixel_ratio: f32,
     resource_options: Option<ResourceOptions>,
+    tile_cache_size: Option<usize>,
 }
 
 impl Default for ImageRendererBuilder {
@@ -46,6 +47,7 @@ impl Default for ImageRendererBuilder {
             height: NonZeroU32::new(512).unwrap(),
             pixel_ratio: 1.0,
             resource_options: None,
+            tile_cache_size: None,
         }
     }
 }
@@ -82,6 +84,17 @@ impl ImageRendererBuilder {
     #[allow(clippy::needless_pass_by_value, reason = "false positive")]
     pub fn with_resource_options(mut self, resource_options: ResourceOptions) -> Self {
         self.resource_options = Some(resource_options);
+        self
+    }
+
+    /// Sets how many tiles of each source the renderer keeps once they are out of view, to reuse
+    /// them in later renders
+    ///
+    /// Default: MapLibre Native's, enough to pan and zoom back (11 tiles for a 512 px map). A tile
+    /// server that renders scattered tiles can keep fewer and save most of that memory.
+    #[must_use]
+    pub fn with_tile_cache_size(mut self, tiles: usize) -> Self {
+        self.tile_cache_size = Some(tiles);
         self
     }
 
@@ -131,6 +144,10 @@ impl<S> ImageRenderer<S> {
             opts.pixel_ratio,
             resource_options.as_ref(),
         );
+
+        if let Some(tiles) = opts.tile_cache_size {
+            map.pin_mut().setTileCacheSize(tiles);
+        }
 
         // Wire up the observer dispatchers once; `map_observer()` afterwards is
         // a pure view that only swaps the stored callbacks.

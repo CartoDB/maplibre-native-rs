@@ -1200,6 +1200,8 @@ pub mod ffi {
         fn takeImage(self: Pin<&mut RenderRequest>) -> UniquePtr<CxxString>;
         /// Sets debug visualization flags.
         fn setDebugFlags(self: Pin<&mut MapRenderer>, flags: MapDebugOptions);
+        /// Sets how many tiles of each source the renderer keeps once they are out of view.
+        fn setTileCacheSize(self: Pin<&mut MapRenderer>, tiles: usize);
         /// Jumps to the requested camera options.
         fn jumpTo(self: Pin<&mut MapRenderer>, camera: &FfiCameraOptions);
         /// Moves the camera by the given delta.
