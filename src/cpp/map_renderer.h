@@ -18,6 +18,12 @@
 #include <mln/util/size.hpp>
 #include <mln/storage/file_source.hpp>
 #include <mln/storage/resource_options.hpp>
+#include <mln/text/glyph_cache.hpp>
+
+#if !defined(MLN_RENDER_BACKEND_OPENGL) && !defined(MLN_WEBGPU_IMPL_FFI) && !defined(__APPLE__)
+#define MLN_BRIDGE_SHARES_VULKAN_DEVICE 1
+#include <mln/vulkan/headless_backend.hpp>
+#endif
 
 #if defined(MLN_WEBGPU_IMPL_FFI)
 #include <mln/webgpu/texture2d.hpp>
@@ -137,15 +143,48 @@ inline std::unique_ptr<std::string> encodeImage(mln::PremultipliedImage image) {
     return std::make_unique<std::string>(std::move(data));
 }
 
+// Every renderer of the process shares one glyph cache.
+inline std::shared_ptr<mln::GlyphCache> processGlyphCache() {
+    static const auto cache = std::make_shared<mln::GlyphCache>();
+    return cache;
+}
+
+#if MLN_BRIDGE_SHARES_VULKAN_DEVICE
+// The renderers of a thread never render at the same time, so they share one device.
+inline std::shared_ptr<mln::vulkan::SharedDevice> threadSharedDevice() {
+    thread_local std::weak_ptr<mln::vulkan::SharedDevice> weak;
+    auto device = weak.lock();
+    if (!device) {
+        weak = device = std::make_shared<mln::vulkan::SharedDevice>();
+    }
+    return device;
+}
+#endif
+
 class HostFrontend final : public mln::HeadlessFrontend {
 public:
     HostFrontend(mln::Size size, float pixelRatio, bool invalidateOnUpdate)
+#if MLN_BRIDGE_SHARES_VULKAN_DEVICE
+        : mln::HeadlessFrontend(std::make_unique<mln::vulkan::HeadlessBackend>(size,
+                                                                                 mln::gfx::HeadlessBackend::SwapBehaviour::NoFlush,
+                                                                                 mln::gfx::ContextMode::Unique,
+                                                                                 threadSharedDevice()),
+                                 size,
+                                 pixelRatio,
+                                 std::nullopt,
+                                 invalidateOnUpdate,
+                                 processGlyphCache()) {
+    }
+#else
         : mln::HeadlessFrontend(size,
                                  pixelRatio,
                                  mln::gfx::HeadlessBackend::SwapBehaviour::NoFlush,
                                  mln::gfx::ContextMode::Unique,
                                  std::nullopt,
-                                 invalidateOnUpdate) {}
+                                 invalidateOnUpdate,
+                                 processGlyphCache()) {
+    }
+#endif
 
     void setRenderRequestedCallback(rust::Box<RenderRequestedCallback> callback) {
         renderRequestedCallback = std::move(callback);

@@ -630,6 +630,10 @@ fn build_local(
         "vendor/metal-cpp",
         "vendor/expected-lite/include",
     ];
+    if matches!(api, GraphicsApi::Vulkan) {
+        include_dirs.push(maplibre_native_dir.join("vendor/Vulkan-Headers/include"));
+        include_dirs.push(maplibre_native_dir.join("vendor/VulkanMemoryAllocator/include"));
+    }
     #[cfg(feature = "wgpu")]
     if matches!(api, GraphicsApi::WGPU) {
         include_dirs.push(maplibre_native_dir.join("vendor/webgpu-cpp"));
